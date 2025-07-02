@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  ai:
+    ollama:
+      init:
+        pull-model-strategy: never
+        timeout: 60000
+        max-retries: 3
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: "qwen3:4b"
+          temperature: 0.7
+
+logging:
+  level:
+    root: info
+    ai:
+      spring: debug

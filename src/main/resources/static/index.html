@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 聊天助手 - Spring AI Ollama</title>
+    <!-- 添加 Marked.js 用于 Markdown 解析 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 添加 highlight.js 用于代码高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        /* AI思考过程样式 */
+        .ai-thinking {
+            background: #f0f8ff !important;
+            border: 1px solid #b3d9ff !important;
+            border-bottom-left-radius: 4px;
+            margin-bottom: 8px;
+            padding: 12px;
+        }
+
+        .ai-thinking-header {
+            font-size: 12px;
+            color: #0066cc;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-thinking-content {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        .ai-thinking-icon {
+            width: 16px;
+            height: 16px;
+            background: #0066cc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+        }
+
+        /* Markdown 样式 */
+        .markdown-content {
+            line-height: 1.6;
+        }
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            margin: 16px 0 8px 0;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .markdown-content h1 { font-size: 1.5em; }
+        .markdown-content h2 { font-size: 1.3em; }
+        .markdown-content h3 { font-size: 1.1em; }
+
+        .markdown-content p {
+            margin: 8px 0;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .markdown-content li {
+            margin: 4px 0;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #ddd;
+            margin: 8px 0;
+            padding-left: 16px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .markdown-content code {
+            background: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .markdown-content pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+        }
+
+        .markdown-content em {
+            font-style: italic;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .markdown-content a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message.ai .message-time {
+            text-align: left;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border: 1px solid #e0e0e0;
+            max-width: 70%;
+            margin-bottom: 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-button {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .clear-button:hover {
+            background: #d32f2f;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f44336;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+        }
+
+        .welcome-message h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 90vh;
+                border-radius: 0;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+            
+            .chat-header h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">连接中...</span>
+        </div>
+        <h1>🤖 AI 聊天助手</h1>
+        <p>基于 Spring AI + Ollama qwen3:4b</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="welcome-message">
+            <h3>👋 欢迎使用 AI 聊天助手</h3>
+            <p>我是基于 qwen3:4b 模型的 AI 助手，可以回答你的各种问题。</p>
+            <p>支持 Markdown 格式显示，包括代码高亮、表格、列表等。</p>
+            <p>开始聊天吧！</p>
+        </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+        <div class="message-avatar" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">AI</div>
+        <div>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 4px;">AI 正在思考...</div>
+        </div>
+    </div>
+
+    <div class="chat-input">
+        <div class="input-container">
+                <textarea class="message-input" id="messageInput" placeholder="输入你的问题..." rows="1" ></textarea>
+            <button class="send-button" id="sendButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                </svg>
+            </button>
+        </div>
+        <button class="clear-button" id="clearButton">清除对话历史</button>
+    </div>
+</div>
+
+<script>
+    // 配置 Marked.js
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {}
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+
+    class ChatApp {
+        constructor() {
+            this.conversationId = null;
+            this.isTyping = false;
+            this.initElements();
+            this.initEventListeners();
+            this.checkHealth();
+        }
+
+        initElements() {
+            this.chatMessages = document.getElementById('chatMessages');
+            this.messageInput = document.getElementById('messageInput');
+            this.sendButton = document.getElementById('sendButton');
+            this.clearButton = document.getElementById('clearButton');
+            this.typingIndicator = document.getElementById('typingIndicator');
+            this.statusDot = document.getElementById('statusDot');
+            this.statusText = document.getElementById('statusText');
+        }
+
+        initEventListeners() {
+            this.sendButton.addEventListener('click', () => this.sendMessage());
+            this.clearButton.addEventListener('click', () => this.clearConversation());
+
+            this.messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+
+            // 自动调整输入框高度
+            this.messageInput.addEventListener('input', () => {
+                this.messageInput.style.height = 'auto';
+                this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+            });
+        }
+
+        async checkHealth() {
+            try {
+                const response = await fetch('/api/chat/health');
+                if (response.ok) {
+                    this.updateStatus(true, '已连接');
+                } else {
+                    this.updateStatus(false, '连接失败');
+                }
+            } catch (error) {
+                this.updateStatus(false, '连接失败');
+            }
+        }
+
+        updateStatus(isConnected, text) {
+            this.statusDot.style.background = isConnected ? '#4CAF50' : '#f44336';
+            this.statusText.textContent = text;
+        }
+
+        async sendMessage() {
+            const message = this.messageInput.value.trim();
+            if (!message || this.isTyping) return;
+
+            // 添加用户消息
+            this.addMessage(message, 'user');
+            this.messageInput.value = '';
+            this.messageInput.style.height = 'auto';
+
+            // 显示输入指示器
+            this.showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        conversationId: this.conversationId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.conversationId = data.conversationId;
+                    this.addAIResponse(data.response);
+                } else {
+                    this.addErrorMessage(data.errorMessage || '发送消息失败');
+                }
+            } catch (error) {
+                console.error('发送消息错误:', error);
+                this.addErrorMessage('网络错误，请检查连接');
+            } finally {
+                this.hideTypingIndicator();
+            }
+        }
+
+        addMessage(content, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = type === 'user' ? '我' : 'AI';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.textContent = content;
+
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = new Date().toLocaleTimeString();
+
+            messageContent.appendChild(messageTime);
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            this.chatMessages.appendChild(messageDiv);
+            this.scrollToBottom();
+        }
+
+        addAIResponse(response) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = 'AI';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            // 解析AI回复，分离思考过程和最终回复
+            const { thinking, finalResponse } = this.parseAIResponse(response);
+
+            // 如果有思考过程，先显示思考内容
+            if (thinking) {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'ai-thinking';
+
+                const thinkingHeader = document.createElement('div');
+                thinkingHeader.className = 'ai-thinking-header';
+                thinkingHeader.innerHTML = `
+                    <div class="ai-thinking-icon">💭</div>
+                    AI 思考过程
+                `;
+
+                const thinkingContent = document.createElement('div');
+                thinkingContent.className = 'ai-thinking-content';
+                thinkingContent.textContent = thinking;
+
+                thinkingDiv.appendChild(thinkingHeader);
+                thinkingDiv.appendChild(thinkingContent);
+                messageContent.appendChild(thinkingDiv);
+            }
+
+            // 显示最终回复（支持Markdown）
+            const finalResponseDiv = document.createElement('div');
+            finalResponseDiv.className = 'markdown-content';
+
+            // 使用 marked.js 解析 Markdown
+            try {
+                finalResponseDiv.innerHTML = marked.parse(finalResponse);
+                // 高亮代码块
+                finalResponseDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            } catch (error) {
+                console.error('Markdown解析错误:', error);
+                finalResponseDiv.textContent = finalResponse;
+            }
+
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = new Date().toLocaleTimeString();
+
+            finalResponseDiv.appendChild(messageTime);
+            messageContent.appendChild(finalResponseDiv);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            this.chatMessages.appendChild(messageDiv);
+            this.scrollToBottom();
+        }
+
+        parseAIResponse(response) {
+            // 检查是否包含思考过程（通常在 <think> 标签中）
+            const thinkMatch = response.match(/<think>([\s\S]*?)<\/think>/i);
+
+            if (thinkMatch) {
+                const thinking = thinkMatch[1].trim();
+                const finalResponse = response.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                return { thinking, finalResponse };
+            }
+
+            // 如果没有明确的思考标签，尝试其他模式
+            const lines = response.split('\n');
+            const thinkingLines = [];
+            const responseLines = [];
+            let inThinking = false;
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // 检测思考过程的开始
+                if (trimmedLine.toLowerCase().includes('think') ||
+                    trimmedLine.toLowerCase().includes('思考') ||
+                    trimmedLine.toLowerCase().includes('分析') ||
+                    trimmedLine.toLowerCase().includes('考虑')) {
+                    inThinking = true;
+                    thinkingLines.push(trimmedLine);
+                    continue;
+                }
+
+                // 检测思考过程的结束
+                if (inThinking && (trimmedLine.includes('</think>') ||
+                    trimmedLine.includes('因此') ||
+                    trimmedLine.includes('所以') ||
+                    trimmedLine.includes('总结'))) {
+                    inThinking = false;
+                    responseLines.push(trimmedLine);
+                    continue;
+                }
+
+                if (inThinking) {
+                    thinkingLines.push(trimmedLine);
+                } else {
+                    responseLines.push(trimmedLine);
+                }
+            }
+
+            const thinking = thinkingLines.join('\n').trim();
+            const finalResponse = responseLines.join('\n').trim();
+
+            return { thinking, finalResponse };
+        }
+
+        addErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            this.chatMessages.appendChild(errorDiv);
+            this.scrollToBottom();
+        }
+
+        showTypingIndicator() {
+            this.isTyping = true;
+            this.typingIndicator.style.display = 'flex';
+            this.scrollToBottom();
+        }
+
+        hideTypingIndicator() {
+            this.isTyping = false;
+            this.typingIndicator.style.display = 'none';
+        }
+
+        async clearConversation() {
+            if (confirm('确定要清除所有对话历史吗？')) {
+                try {
+                    await fetch('/api/chat/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            conversationId: this.conversationId
+                        })
+                    });
+
+                    this.conversationId = null;
+                    this.chatMessages.innerHTML = `
+                        <div class="welcome-message">
+                            <h3>👋 欢迎使用 AI 聊天助手</h3>
+                            <p>我是基于 qwen3:4b 模型的 AI 助手，可以回答你的各种问题。</p>
+                            <p>支持 Markdown 格式显示，包括代码高亮、表格、列表等。</p>
+                            <p>开始聊天吧！</p>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('清除对话错误:', error);
+                    alert('清除对话失败');
+                }
+            }
+        }
+
+        scrollToBottom() {
+            setTimeout(() => {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }, 100);
+        }
+    }
+
+    // 初始化应用
+    document.addEventListener('DOMContentLoaded', () => {
+        new ChatApp();
+    });
+</script>
+</body>
+</html> 
