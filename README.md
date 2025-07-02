@@ -38,30 +38,6 @@ mvn spring-boot:run
 ### 3. 访问聊天界面
 打开浏览器访问：http://localhost:8080
 
-## 项目结构
-```
-spring-ai-ollama/
-├── src/main/java/com/hongzhang/
-│   ├── config/          # 配置类
-│   │   └── ModelConfig.java
-│   ├── controller/      # 控制器
-│   │   ├── ChatController.java
-│   │   └── UserController.java
-│   ├── dto/            # 数据传输对象
-│   │   ├── ChatRequest.java
-│   │   ├── ChatResponse.java
-│   │   └── User.java
-│   ├── service/        # 服务层
-│   │   ├── ChatService.java
-│   │   └── UserService.java
-│   └── MainApp.java    # 主启动类
-├── src/main/resources/
-│   ├── static/         # 静态资源（前端页面）
-│   │   └── index.html
-│   └── application.yml # 配置文件
-└── pom.xml            # Maven配置
-```
-
 ## API接口说明
 
 ### 聊天接口
@@ -174,7 +150,7 @@ spring-ai-ollama/
 - 支持Lombok简化代码
 - 包含完整的错误处理和日志记录
 
-## 后续优化建议
+## 后续计划
 1. **持久化存储**: 使用Redis或数据库存储对话历史
 2. **用户认证**: 添加用户登录和权限管理
 3. **流式响应**: 实现AI回复的流式输出
