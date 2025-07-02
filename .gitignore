@@ -37,3 +37,4 @@ build/
 ### Mac OS ###
 .DS_Store
 /test-ai-response.html
+/.idea/
